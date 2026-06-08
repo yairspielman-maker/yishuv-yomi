@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>יישוב יומי | וואטסאפ יומי ליישובי ישראל</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="hero">
+      <p class="kicker">WhatsApp Localities Club</p>
+      <h1>יישוב יומי</h1>
+      <p class="subtitle">5 דקות ביום, וכל הארץ נכנסת לראש</p>
+      <a class="primary-cta" href="#signup">חברו לי וואטסאפ יומי</a>
+    </header>
+
+    <main>
+      <section class="sample-stage" aria-labelledby="sample-title">
+        <div class="sample-head">
+          <p class="kicker">טעימה מהיום</p>
+          <h2 id="sample-title">יישוב אחד בכל פעם</h2>
+          <span class="progress-label" id="cardProgress">1 מתוך 5</span>
+        </div>
+
+        <article class="reveal-card" id="localityCard"></article>
+
+        <div class="card-actions">
+          <button class="secondary-button" id="revealRegionButton" type="button">גלו אזור</button>
+          <button class="secondary-button" id="revealFactsButton" type="button">גלו עובדות</button>
+          <button class="primary-button" id="nextLocalityButton" type="button">הבא</button>
+        </div>
+
+        <div class="micro-challenge" id="microChallenge"></div>
+      </section>
+
+      <section class="album-strip" aria-label="התקדמות">
+        <div>
+          <strong id="streakCount">0</strong>
+          <span>רצף יומי</span>
+        </div>
+        <div>
+          <strong id="regionsUnlocked">0</strong>
+          <span>אזורים נפתחו</span>
+        </div>
+        <div>
+          <strong id="shownCount">0</strong>
+          <span>יישובים נחשפו</span>
+        </div>
+        <div class="album-meter">
+          <span>אלבום ישראל</span>
+          <div class="album-track" aria-hidden="true"><div class="album-fill" id="albumFill"></div></div>
+        </div>
+      </section>
+
+      <section class="signup-panel" id="signup">
+        <div class="signup-intro">
+          <p class="kicker">הוואטסאפ היומי שלך</p>
+          <h2>מקבלים כל יום 1-5 יישובים, בלי לפתוח אפליקציית לימוד</h2>
+          <p>בחרו שעה, כמות וסגנון. אחרי החיבור, השרת ישלח את היישובים היומיים לפי ההגדרות.</p>
+        </div>
+
+        <form id="subscribeForm" class="steps">
+          <label class="step-card">
+            <span class="step-number">1</span>
+            <span class="step-title">כמה יישובים ביום?</span>
+            <select id="dailyCountInput" name="dailyCount">
+              <option value="1">1 יישוב</option>
+              <option value="2">2 יישובים</option>
+              <option value="3" selected>3 יישובים</option>
+              <option value="4">4 יישובים</option>
+              <option value="5">5 יישובים</option>
+            </select>
+          </label>
+
+          <label class="step-card">
+            <span class="step-number">2</span>
+            <span class="step-title">מתי לשלוח?</span>
+            <input id="sendTimeInput" name="sendTime" type="time" value="09:00">
+          </label>
+
+          <label class="step-card">
+            <span class="step-number">3</span>
+            <span class="step-title">באיזה סדר?</span>
+            <select id="orderModeInput" name="orderMode">
+              <option value="region">לפי אזור גאוגרפי</option>
+              <option value="random">אקראי</option>
+              <option value="official">לפי סדר רשימה רשמית</option>
+            </select>
+          </label>
+
+          <label class="step-card">
+            <span class="step-number">4</span>
+            <span class="step-title">מספר וואטסאפ</span>
+            <input id="phoneInput" name="phoneNumber" type="tel" dir="ltr" placeholder="+9725XXXXXXXX" autocomplete="tel">
+          </label>
+
+          <label class="step-card">
+            <span class="step-number">5</span>
+            <span class="step-title">סגנון הודעה</span>
+            <select id="messageStyleInput" name="messageStyle">
+              <option value="short">קצר</option>
+              <option value="detailed">מפורט</option>
+              <option value="challenge">אתגר קטן</option>
+            </select>
+          </label>
+
+          <label class="step-card">
+            <span class="step-number">+</span>
+            <span class="step-title">שם לפתיחה בהודעה</span>
+            <input id="nameInput" name="name" type="text" placeholder="יונדב">
+          </label>
+
+          <label class="consent-row">
+            <input id="consentInput" name="consentAccepted" type="checkbox">
+            <span>אני מאשר/ת לקבל הודעת וואטסאפ יומית ללימוד יישובי ישראל</span>
+          </label>
+
+          <div class="form-actions">
+            <button class="primary-button" type="submit">חברו לי וואטסאפ יומי</button>
+            <button class="secondary-button" id="sendTestButton" type="button">שלח הודעת בדיקה</button>
+            <button class="manual-button" id="manualWhatsAppButton" type="button">פתח בוואטסאפ לשליחה ידנית</button>
+            <button class="quiet-button" id="unsubscribeButton" type="button">כבה מנוי</button>
+            <button class="soft-button" id="tomorrowMoreButton" type="button">שלח לי מחר עוד 5</button>
+          </div>
+          <p class="manual-note">שליחה ידנית זמינה עכשיו. שליחה אוטומטית אמיתית תופעל רק אחרי חיבור WhatsApp Cloud API.</p>
+          <p class="form-status" id="formStatus" role="status"></p>
+        </form>
+      </section>
+
+      <details class="developer-panel">
+        <summary>תצוגה מקדימה למפתחים</summary>
+        <div class="developer-grid">
+          <div>
+            <p class="dev-status" id="backendStatus">בודק חיבור לשרת...</p>
+            <button class="soft-button" id="browserReminderButton" type="button">בדיקת התראת דפדפן משנית</button>
+          </div>
+          <pre class="message-preview" id="messagePreview"></pre>
+        </div>
+      </details>
+    </main>
+  </div>
+
+  <script src="data/localities.mock.js" defer></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
