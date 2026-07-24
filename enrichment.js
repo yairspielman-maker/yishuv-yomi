@@ -151,5 +151,6 @@
   }
   if (browserWindow) {
     browserWindow.YISHUV_ENRICHMENT = api;
+    
   }
 })(typeof window === "undefined" ? null : window);
