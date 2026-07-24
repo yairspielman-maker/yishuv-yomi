@@ -1,0 +1,232 @@
+{
+  "13": {
+    "latitude": 30.7677164,
+    "longitude": 35.2796246,
+    "source": "prototype-geocoding",
+    "verified": true,
+    "returnedName": "חצבה",
+    "displayName": "חצבה, מועצה אזורית הערבה התיכונה, נפת באר שבע, מחוז הדרום, 8681500, ישראל",
+    "osmType": "way",
+    "osmId": "60256743"
+  },
+  "26": {
+    "latitude": 32.9654783,
+    "longitude": 35.5427342,
+    "source": "prototype-geocoding",
+    "verified": true,
+    "returnedName": "ראש פינה",
+    "displayName": "ראש פינה, נפת צפת, מחוז הצפון, 1200000, ישראל",
+    "osmType": "way",
+    "osmId": "696713262"
+  },
+  "43": {
+    "latitude": 33.2789864,
+    "longitude": 35.5801884,
+    "source": "prototype-geocoding",
+    "verified": true,
+    "returnedName": "מטולה",
+    "displayName": "מטולה, נפת צפת, מחוז הצפון, 1029200, ישראל",
+    "osmType": "way",
+    "osmId": "717602462"
+  },
+  "70": {
+    "latitude": 31.7957411,
+    "longitude": 34.6488659,
+    "source": "prototype-geocoding",
+    "verified": true,
+    "returnedName": "אשדוד",
+    "displayName": "אשדוד, נפת אשקלון, מחוז הדרום, ישראל",
+    "osmType": "relation",
+    "osmId": "18438173"
+  },
+  "99": {
+    "latitude": 30.612433,
+    "longitude": 34.8018727,
+    "source": "prototype-geocoding",
+    "verified": true,
+    "returnedName": "מצפה רמון",
+    "displayName": "מצפה רמון, נפת באר שבע, מחוז הדרום, 8060000, ישראל",
+    "osmType": "way",
+    "osmId": "702433488"
+  },
+  "472": {
+    "latitude": 31.8075045,
+    "longitude": 35.1071362,
+    "source": "prototype-geocoding",
+    "verified": true,
+    "returnedName": "אבו גוש",
+    "displayName": "אבו גוש, נפת ירושלים, מחוז ירושלים, ישראל",
+    "osmType": "way",
+    "osmId": "621200972"
+  },
+  "1015": {
+    "latitude": 31.8039508,
+    "longitude": 35.1570251,
+    "source": "prototype-geocoding",
+    "verified": true,
+    "returnedName": "מבשרת ציון",
+    "displayName": "מבשרת ציון, נפת ירושלים, מחוז ירושלים, ישראל",
+    "osmType": "way",
+    "osmId": "626005966"
+  },
+  "2600": {
+    "latitude": 29.5540306,
+    "longitude": 34.9452748,
+    "source": "prototype-geocoding",
+    "verified": true,
+    "returnedName": "אילת",
+    "displayName": "אילת, נפת באר שבע, מחוז הדרום, ישראל",
+    "osmType": "way",
+    "osmId": "963432388"
+  },
+  "2610": {
+    "latitude": 31.746214,
+    "longitude": 34.9886825,
+    "source": "prototype-geocoding",
+    "verified": true,
+    "returnedName": "בית שמש",
+    "displayName": "בית שמש, נפת ירושלים, מחוז ירושלים, ישראל",
+    "osmType": "relation",
+    "osmId": "1379449"
+  },
+  "3000": {
+    "source": "prototype-geocoding",
+    "verified": false,
+    "status": "ambiguous",
+    "requestedName": "ירושלים",
+    "candidateNames": [
+      "ירושלים, נפת ירושלים, מחוז ירושלים, ישראל",
+      "ירושלים, נפת ירושלים, מחוז ירושלים, ישראל"
+    ],
+    "checkedAt": "2026-07-23T11:07:25.605Z"
+  },
+  "4000": {
+    "latitude": 32.8191218,
+    "longitude": 34.9983856,
+    "source": "prototype-geocoding",
+    "verified": true,
+    "returnedName": "חיפה",
+    "displayName": "חיפה, נפת חיפה, מחוז חיפה, ישראל",
+    "osmType": "relation",
+    "osmId": "1387888"
+  },
+  "4012": {
+    "latitude": 32.9568708,
+    "longitude": 35.7397621,
+    "source": "prototype-geocoding",
+    "sourceProvider": "OpenStreetMap Nominatim",
+    "sourceUrl": "https://www.openstreetmap.org/way/92005677",
+    "verified": true,
+    "matchedName": "אניעם",
+    "returnedName": "אניעם",
+    "displayName": "אניעם, מועצה אזורית גולן, נפת רמת הגולן, מחוז הצפון, ישראל",
+    "osmType": "way",
+    "osmId": "92005677"
+  },
+  "4100": {
+    "latitude": 32.9903515,
+    "longitude": 35.6865282,
+    "source": "prototype-geocoding",
+    "verified": true,
+    "returnedName": "קצרין",
+    "displayName": "קצרין, נפת רמת הגולן, מחוז הצפון, ישראל",
+    "osmType": "relation",
+    "osmId": "3014958"
+  },
+  "4101": {
+    "latitude": 33.1321192,
+    "longitude": 35.7773161,
+    "source": "prototype-geocoding",
+    "sourceProvider": "OpenStreetMap Nominatim",
+    "sourceUrl": "https://www.openstreetmap.org/way/91449716",
+    "verified": true,
+    "matchedName": "מרום גולן",
+    "returnedName": "מרום גולן",
+    "displayName": "מרום גולן, מועצה אזורית גולן, נפת רמת הגולן, מחוז הצפון, ישראל",
+    "osmType": "way",
+    "osmId": "91449716"
+  },
+  "4503": {
+    "latitude": 33.0962822,
+    "longitude": 35.7961971,
+    "source": "prototype-geocoding",
+    "sourceProvider": "OpenStreetMap Nominatim",
+    "sourceUrl": "https://www.openstreetmap.org/way/92005676",
+    "verified": true,
+    "matchedName": "עין זיוון",
+    "returnedName": "עין זיוון",
+    "displayName": "עין זיוון, מועצה אזורית גולן, נפת רמת הגולן, מחוז הצפון, ישראל",
+    "osmType": "way",
+    "osmId": "92005676"
+  },
+  "4702": {
+    "latitude": 32.8498005,
+    "longitude": 35.6667474,
+    "source": "prototype-geocoding",
+    "sourceProvider": "OpenStreetMap Nominatim",
+    "sourceUrl": "https://www.openstreetmap.org/way/90576911",
+    "verified": true,
+    "matchedName": "רמות",
+    "returnedName": "רמות",
+    "displayName": "רמות, מועצה אזורית גולן, נפת רמת הגולן, מחוז הצפון, ישראל",
+    "osmType": "way",
+    "osmId": "90576911"
+  },
+  "5000": {
+    "latitude": 32.0852997,
+    "longitude": 34.7818064,
+    "source": "prototype-geocoding",
+    "verified": true,
+    "returnedName": "תל־אביב–יפו",
+    "displayName": "תל־אביב–יפו, נפת תל אביב, מחוז תל אביב, ישראל",
+    "osmType": "relation",
+    "osmId": "1382494"
+  },
+  "6700": {
+    "latitude": 32.7870039,
+    "longitude": 35.5187814,
+    "source": "prototype-geocoding",
+    "verified": true,
+    "returnedName": "טבריה",
+    "displayName": "טבריה, נפת כנרת, מחוז הצפון, ישראל",
+    "osmType": "way",
+    "osmId": "786195800"
+  },
+  "7400": {
+    "latitude": 32.3137219,
+    "longitude": 34.8667577,
+    "source": "prototype-geocoding",
+    "verified": true,
+    "returnedName": "נתניה",
+    "displayName": "נתניה, נפת השרון, מחוז המרכז, ישראל",
+    "osmType": "relation",
+    "osmId": "7155961"
+  },
+  "7700": {
+    "latitude": 32.6099256,
+    "longitude": 35.2872062,
+    "source": "prototype-geocoding",
+    "verified": true,
+    "returnedName": "עפולה",
+    "displayName": "עפולה, נפת יזרעאל, מחוז הצפון, ישראל",
+    "osmType": "way",
+    "osmId": "25662403"
+  },
+  "9000": {
+    "latitude": 31.2508829,
+    "longitude": 34.7912803,
+    "source": "prototype-geocoding",
+    "verified": true,
+    "returnedName": "באר-שבע",
+    "displayName": "באר-שבע, נפת באר שבע, מחוז הדרום, ישראל",
+    "osmType": "way",
+    "osmId": "675627797"
+  },
+  "_meta": {
+    "source": "prototype-geocoding",
+    "provider": "Nominatim / OpenStreetMap",
+    "generatedAt": "2026-07-23T11:07:36.756Z",
+    "localityCount": 20,
+    "usagePolicy": "https://operations.osmfoundation.org/policies/nominatim/"
+  }
+}
