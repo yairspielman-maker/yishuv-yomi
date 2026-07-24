@@ -1,4 +1,4 @@
--(function initializeEnrichmentModule(browserWindow) {
+(function initializeEnrichmentModule(browserWindow) {
   "use strict";
 
   function enrichLocalitiesWithPrototypeData(localities, enrichmentIndex = {}) {
