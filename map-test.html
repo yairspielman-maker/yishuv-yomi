@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>בדיקת מפת הקשר</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      crossorigin=""
+    >
+    <link rel="stylesheet" href="map-test.css">
+  </head>
+  <body>
+    <main class="map-test-page">
+      <header>
+        <h1>בדיקת מפת הקשר</h1>
+        <p class="locality-name">קצרין</p>
+        <p>רדיוס 5 ק״מ</p>
+      </header>
+
+      <div id="map" aria-label="מפת קצרין ברדיוס חמישה קילומטרים"></div>
+      <p id="mapStatus" class="map-status" role="status">טוען את המפה...</p>
+    </main>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      crossorigin=""
+    ></script>
+    <script src="map-test.js"></script>
+  </body>
+</html>

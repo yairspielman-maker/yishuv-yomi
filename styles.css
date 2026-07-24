@@ -203,6 +203,78 @@ h2 {
   line-height: 1.55;
 }
 
+.locality-map-wrapper {
+  width: 100%;
+  margin-top: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  text-align: right;
+}
+
+.locality-map {
+  width: 100%;
+  height: 290px;
+  direction: ltr;
+  background: #edf2ea;
+}
+
+.locality-map-caption {
+  margin: 0;
+  padding: 8px 10px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.locality-map-fallback,
+.locality-map-unavailable {
+  width: 100%;
+  margin-top: 16px;
+  padding: 18px 14px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: #f5f7f2;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.locality-map-unavailable {
+  height: 120px;
+  display: grid;
+  place-items: center;
+  margin-top: 0;
+  border: 0;
+  border-radius: 0;
+  direction: rtl;
+}
+
+.locality-map-marker-shell {
+  background: transparent;
+}
+
+.locality-map-marker-dot {
+  width: 28px;
+  height: 28px;
+  display: block;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  background: var(--green-dark);
+  box-shadow: 0 2px 0 rgba(20, 33, 29, 0.3), 0 0 0 3px rgba(37, 211, 102, 0.72);
+}
+
+.leaflet-container {
+  font-family: "Noto Sans Hebrew", "Segoe UI", Tahoma, sans-serif;
+}
+
+.leaflet-control-attribution {
+  font-size: 10px;
+}
+
 .card-actions {
   display: flex;
   justify-content: center;
@@ -451,5 +523,9 @@ h2 {
   .soft-button,
   .quiet-button {
     width: 100%;
+  }
+
+  .locality-map {
+    height: 240px;
   }
 }

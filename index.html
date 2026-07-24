@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>יישוב יומי | וואטסאפ יומי ליישובי ישראל</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -17,6 +18,12 @@
 
     <main>
       <section class="sample-stage" aria-labelledby="sample-title">
+        <div class="micro-challenge" id="enrichedPrototypeNotice" hidden>
+          <span>מצב ניסוי · חמשת יישובי הפיילוט</span>
+          <a class="soft-button" href="/">חזרה למסלול היומי</a>
+          <p id="enrichedPrototypeMissing" role="alert"></p>
+        </div>
+
         <div class="sample-head">
           <p class="kicker">טעימה מהיום</p>
           <h2 id="sample-title">יישוב אחד בכל פעם</h2>
@@ -141,7 +148,10 @@
     </main>
   </div>
 
-  <script src="data/localities.mock.js" defer></script>
+  <script src="data/localities.mock.js"></script>
+  <script src="lib/enrichment.js"></script>
+  <script src="lib/enriched-prototype.js"></script>
+  <script id="leafletScript" src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" async></script>
   <script src="app.js" defer></script>
 </body>
 </html>

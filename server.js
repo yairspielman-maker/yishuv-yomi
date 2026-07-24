@@ -1,7 +1,35 @@
+"use strict";
+
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
+const { loadEnvFile } = require("./lib/env");
+const { normalizeIsraeliPhone, isValidIsraeliPhone } = require("./lib/phone");
+const { normalizeSettings } = require("./lib/settings");
+const {
+  sortLocalities,
+  pickDailyBatch,
+  markLocalityShown,
+  createSeededRandom
+} = require("./lib/localities");
+const { createLocalityMessages } = require("./lib/messages");
+const {
+  enrichLocalitiesWithCoordinates,
+  hasValidCoordinate
+} = require("./lib/coordinates");
+const {
+  enrichLocalitiesWithPrototypeData
+} = require("./lib/enrichment");
+const {
+  selectEnrichedPrototypeLocalities
+} = require("./lib/enriched-prototype");
+
+const ENV_PATH = process.env.YISHUV_ENV_PATH
+  ? path.resolve(process.env.YISHUV_ENV_PATH)
+  : path.join(__dirname, ".env");
+loadEnvFile(ENV_PATH);
+
 let express;
 try {
   express = require("express");
@@ -11,9 +39,20 @@ try {
 
 const PORT = Number(process.env.PORT || 3000);
 const APP_ROOT = __dirname;
-const STORAGE_PATH = path.join(__dirname, "data", "subscribers.json");
+const STORAGE_PATH = process.env.YISHUV_STORAGE_PATH
+  ? path.resolve(process.env.YISHUV_STORAGE_PATH)
+  : path.join(__dirname, "data", "subscribers.json");
 const OFFICIAL_LOCALITIES_PATH = path.join(__dirname, "data", "localities.official.json");
-const FALLBACK_FACT = "אין מידע קצר זמין כרגע";
+const PROTOTYPE_COORDINATES_PATH = path.join(
+  __dirname,
+  "data",
+  "locality-coordinates.prototype.json"
+);
+const PROTOTYPE_ENRICHMENT_PATH = path.join(
+  __dirname,
+  "data",
+  "localities.enriched.prototype.json"
+);
 const LIVE_SEND_DELAY_MIN_MS = 700;
 const LIVE_SEND_DELAY_MAX_MS = 1200;
 const LOCALITY_DATA = loadLocalities();
@@ -37,10 +76,11 @@ app.get("/api/status", (request, response) => {
   response.json({
     backendRunning: true,
     whatsappMode: isMockMode() ? "mock" : "live",
-    hasToken: Boolean(process.env.WHATSAPP_TOKEN),
-    hasPhoneNumberId: Boolean(process.env.WHATSAPP_PHONE_NUMBER_ID),
+    hasToken: hasEnvValue("WHATSAPP_TOKEN"),
+    hasPhoneNumberId: hasEnvValue("WHATSAPP_PHONE_NUMBER_ID"),
     localitiesCount: LOCALITIES.length,
-    dataSource: LOCALITY_DATA.source
+    dataSource: LOCALITY_DATA.source,
+    mapPrototypeCount: LOCALITY_DATA.mapPrototypeCount
   });
 });
 
@@ -62,17 +102,38 @@ app.get("/api/localities/count", (request, response) => {
 });
 
 app.get("/api/localities/sample", (request, response) => {
-  const limit = Math.min(20, Math.max(1, Number(request.query.limit || 5)));
-  const orderMode = ["random", "region", "official"].includes(request.query.orderMode) ? request.query.orderMode : "region";
+  const limit = Math.min(20, Math.max(1, Number.parseInt(request.query.limit, 10) || 5));
+  const orderMode = ["random", "region", "official"].includes(request.query.orderMode)
+    ? request.query.orderMode
+    : "region";
+  const random = createSeededRandom(`sample:${localDateKey(new Date(), "Asia/Jerusalem")}`);
+  const coordinateOnly = request.query.withCoordinates === "true";
+  const samplePool = coordinateOnly
+    ? LOCALITIES.filter(hasValidCoordinate)
+    : LOCALITIES;
+
   response.json({
     dataSource: LOCALITY_DATA.source,
     count: LOCALITIES.length,
-    localities: getOrderedLocalities(orderMode).slice(0, limit)
+    eligibleCount: samplePool.length,
+    localities: sortLocalities(samplePool, orderMode, { random }).slice(0, limit)
+  });
+});
+
+app.get("/api/localities/enriched-prototype", (request, response) => {
+  const selection = selectEnrichedPrototypeLocalities(LOCALITIES);
+  response.json({
+    prototype: "enriched",
+    count: selection.localities.length,
+    localities: selection.localities,
+    missing: selection.missing,
+    officialCodes: selection.officialCodes
   });
 });
 
 app.get("/api/localities/regions", (request, response) => {
-  const regions = [...new Set(LOCALITIES.map((locality) => locality.region).filter(Boolean))].sort((a, b) => a.localeCompare(b, "he"));
+  const regions = [...new Set(LOCALITIES.map((locality) => locality.region).filter(Boolean))]
+    .sort((left, right) => left.localeCompare(right, "he"));
   response.json({
     dataSource: LOCALITY_DATA.source,
     count: regions.length,
@@ -82,14 +143,21 @@ app.get("/api/localities/regions", (request, response) => {
 
 app.get("/api/today-preview", (request, response) => {
   const settings = normalizeSettings(request.query);
-  const batch = pickNextBatch({ ...settings, shownLocalityIds: [] });
-  const messages = createLocalityMessages(settings, batch);
+  const storage = readStorage();
+  const subscriber = findSubscriber(storage, settings);
+  const learner = mergeLearnerSettings(subscriber, settings);
+  const selection = selectBatch(learner);
+  const messages = createLocalityMessages(learner, selection.batch);
 
   response.json({
     mockMode: isMockMode(),
-    batch,
+    batch: selection.batch,
     messages,
-    message: messages.join("\n\n")
+    message: messages.join("\n\n"),
+    normalizedPhone: settings.phoneNumber,
+    phoneValid: isValidIsraeliPhone(settings.phoneNumber),
+    subscriber: subscriber ? publicSubscriber(subscriber) : null,
+    progress: createProgressSummary(subscriber || learner)
   });
 });
 
@@ -110,7 +178,7 @@ app.post("/api/subscribe", (request, response) => {
 
   const storage = readStorage();
   const now = new Date().toISOString();
-  let subscriber = storage.subscribers.find((item) => item.phoneNumber === settings.phoneNumber);
+  let subscriber = findSubscriber(storage, settings);
 
   if (!subscriber) {
     subscriber = {
@@ -138,23 +206,22 @@ app.post("/api/subscribe", (request, response) => {
 
   writeStorage(storage);
 
-  const batch = pickNextBatch(subscriber);
-  const messages = createLocalityMessages(subscriber, batch);
+  const selection = selectBatch(subscriber);
+  const messages = createLocalityMessages(subscriber, selection.batch);
   response.json({
     ok: true,
     mockMode: isMockMode(),
     subscriber: publicSubscriber(subscriber),
-    batch,
+    progress: createProgressSummary(subscriber),
+    batch: selection.batch,
     messages,
     message: messages.join("\n\n")
   });
 });
 
 app.post("/api/unsubscribe", (request, response) => {
-  const phoneNumber = normalizePhone(request.body.phoneNumber || "");
-  const id = String(request.body.id || "");
   const storage = readStorage();
-  const subscriber = storage.subscribers.find((item) => item.id === id || item.phoneNumber === phoneNumber);
+  const subscriber = findSubscriber(storage, request.body || {});
 
   if (!subscriber) {
     response.status(404).json({ error: "subscriber_not_found" });
@@ -163,7 +230,11 @@ app.post("/api/unsubscribe", (request, response) => {
 
   subscriber.isActive = false;
   writeStorage(storage);
-  response.json({ ok: true, subscriber: publicSubscriber(subscriber) });
+  response.json({
+    ok: true,
+    subscriber: publicSubscriber(subscriber),
+    progress: createProgressSummary(subscriber)
+  });
 });
 
 app.post("/api/send-test", async (request, response) => {
@@ -181,24 +252,57 @@ app.post("/api/send-test", async (request, response) => {
     return;
   }
 
-  const batch = pickNextBatch({ ...settings, shownLocalityIds: [] });
-  const messages = createLocalityMessages(settings, batch);
+  const storage = readStorage();
+  const subscriber = findSubscriber(storage, settings);
+  const learner = mergeLearnerSettings(subscriber, settings);
+  const selection = selectBatch(learner);
+  const messages = createLocalityMessages(learner, selection.batch);
   const result = await sendWhatsAppMessages(settings.phoneNumber, messages);
 
   response.status(result.ok ? 200 : 502).json({
     ok: result.ok,
     ...result,
-    batch,
+    batch: selection.batch,
     messages,
-    message: messages.join("\n\n")
+    message: messages.join("\n\n"),
+    progress: createProgressSummary(subscriber || learner)
+  });
+});
+
+app.post("/api/progress/mark-shown", (request, response) => {
+  const storage = readStorage();
+  const subscriber = findSubscriber(storage, request.body || {});
+
+  if (!subscriber) {
+    response.status(404).json({ error: "subscriber_not_found" });
+    return;
+  }
+
+  const localityId = String(request.body.localityId || "");
+  if (!LOCALITIES.some((locality) => locality.id === localityId)) {
+    response.status(400).json({ error: "invalid_locality" });
+    return;
+  }
+
+  const nextProgress = markLocalityShown(LOCALITIES, subscriber, localityId);
+  subscriber.shownLocalityIds = nextProgress.shownLocalityIds;
+  subscriber.completedCycles = nextProgress.completedCycles;
+  if (nextProgress.added) {
+    subscriber.totalShownCount = Number(subscriber.totalShownCount || 0) + 1;
+  }
+  writeStorage(storage);
+
+  response.json({
+    ok: true,
+    added: nextProgress.added,
+    subscriber: publicSubscriber(subscriber),
+    progress: createProgressSummary(subscriber)
   });
 });
 
 app.post("/api/reset-progress", (request, response) => {
-  const phoneNumber = normalizePhone(request.body.phoneNumber || "");
-  const id = String(request.body.id || "");
   const storage = readStorage();
-  const subscriber = storage.subscribers.find((item) => item.id === id || item.phoneNumber === phoneNumber);
+  const subscriber = findSubscriber(storage, request.body || {});
 
   if (!subscriber) {
     response.status(404).json({ error: "subscriber_not_found" });
@@ -208,7 +312,11 @@ app.post("/api/reset-progress", (request, response) => {
   subscriber.shownLocalityIds = [];
   subscriber.lastSentDate = null;
   writeStorage(storage);
-  response.json({ ok: true, subscriber: publicSubscriber(subscriber) });
+  response.json({
+    ok: true,
+    subscriber: publicSubscriber(subscriber),
+    progress: createProgressSummary(subscriber)
+  });
 });
 
 app.use(express.static(APP_ROOT));
@@ -216,23 +324,42 @@ app.get("*", (request, response) => {
   response.sendFile(path.join(APP_ROOT, "index.html"));
 });
 
-app.listen(PORT, () => {
-  console.log(`יישוב יומי running at http://localhost:${PORT}`);
-  console.log(isMockMode() ? "WhatsApp mock mode: missing Cloud API env vars." : "WhatsApp Cloud API mode enabled.");
-});
-
-setInterval(runScheduler, 60 * 1000);
-runScheduler();
+function startServer(port = PORT) {
+  const server = app.listen(port, () => {
+    console.log(`יישוב יומי running at http://localhost:${port}`);
+    console.log(isMockMode()
+      ? "WhatsApp mock mode: missing Cloud API env vars."
+      : "WhatsApp Cloud API mode enabled.");
+  });
+  const schedulerTimer = setInterval(() => {
+    runScheduler().catch((error) => console.error("Scheduler failed:", error));
+  }, 60 * 1000);
+  runScheduler().catch((error) => console.error("Scheduler failed:", error));
+  return { server, schedulerTimer };
+}
 
 function loadLocalities() {
+  const prototypeCoordinates = loadPrototypeCoordinates();
+  const prototypeEnrichment = loadPrototypeEnrichment();
+  const mapPrototypeCount = Object.entries(prototypeCoordinates)
+    .filter(([key, value]) =>
+      key !== "_meta"
+      && value?.verified === true
+      && hasValidCoordinate(value))
+    .length;
+
   if (fs.existsSync(OFFICIAL_LOCALITIES_PATH)) {
     const payload = JSON.parse(fs.readFileSync(OFFICIAL_LOCALITIES_PATH, "utf8"));
     if (Array.isArray(payload.localities) && payload.localities.length) {
       return {
         source: "official",
-        localities: payload.localities,
+        localities: enrichLocalitiesWithPrototypeData(
+          enrichLocalitiesWithCoordinates(payload.localities, prototypeCoordinates),
+          prototypeEnrichment
+        ),
         importedAt: payload.importedAt || null,
-        resourceId: payload.resourceId || null
+        resourceId: payload.resourceId || null,
+        mapPrototypeCount
       };
     }
   }
@@ -244,15 +371,46 @@ function loadLocalities() {
   vm.runInContext(code, context, { filename: dataPath });
   return {
     source: "mock",
-    localities: context.window.YISHUV_LOCALITIES || [],
+    localities: enrichLocalitiesWithPrototypeData(
+      enrichLocalitiesWithCoordinates(
+        context.window.YISHUV_LOCALITIES || [],
+        prototypeCoordinates
+      ),
+      prototypeEnrichment
+    ),
     importedAt: null,
-    resourceId: null
+    resourceId: null,
+    mapPrototypeCount
   };
+}
+
+function loadPrototypeCoordinates() {
+  try {
+    const payload = JSON.parse(fs.readFileSync(PROTOTYPE_COORDINATES_PATH, "utf8"));
+    return payload && typeof payload === "object" ? payload : {};
+  } catch {
+    return {};
+  }
+}
+
+function loadPrototypeEnrichment() {
+  try {
+    const payload = JSON.parse(fs.readFileSync(PROTOTYPE_ENRICHMENT_PATH, "utf8"));
+    return payload && typeof payload === "object" && !Array.isArray(payload)
+      ? payload
+      : {};
+  } catch {
+    return {};
+  }
 }
 
 function readStorage() {
   ensureStorage();
-  return JSON.parse(fs.readFileSync(STORAGE_PATH, "utf8"));
+  const storage = JSON.parse(fs.readFileSync(STORAGE_PATH, "utf8"));
+  return {
+    subscribers: Array.isArray(storage.subscribers) ? storage.subscribers : [],
+    mockMessages: Array.isArray(storage.mockMessages) ? storage.mockMessages : []
+  };
 }
 
 function writeStorage(storage) {
@@ -266,38 +424,39 @@ function ensureStorage() {
   }
 }
 
-function normalizeSettings(input) {
+function findSubscriber(storage, input = {}) {
+  const id = String(input.id || "");
+  const phoneNumber = normalizeIsraeliPhone(input.phoneNumber);
+  return storage.subscribers.find((item) =>
+    (id && item.id === id) || (phoneNumber && item.phoneNumber === phoneNumber));
+}
+
+function mergeLearnerSettings(subscriber, settings) {
+  if (!subscriber) {
+    return {
+      ...settings,
+      shownLocalityIds: [],
+      completedCycles: 0,
+      totalShownCount: 0
+    };
+  }
+
   return {
-    id: input.id || "",
-    name: String(input.name || "יונדב").trim() || "יונדב",
-    phoneNumber: normalizePhone(input.phoneNumber || ""),
-    dailyCount: Math.min(5, Math.max(1, Number(input.dailyCount || 3))),
-    sendTime: /^\d{2}:\d{2}$/.test(String(input.sendTime || "")) ? String(input.sendTime) : "09:00",
-    orderMode: ["random", "region", "official"].includes(input.orderMode) ? input.orderMode : "region",
-    messageStyle: ["short", "detailed", "challenge"].includes(input.messageStyle) ? input.messageStyle : "short",
-    timezone: String(input.timezone || "Asia/Jerusalem"),
-    consentAccepted: input.consentAccepted === true || input.consentAccepted === "true",
-    shownLocalityIds: Array.isArray(input.shownLocalityIds) ? input.shownLocalityIds : []
+    ...subscriber,
+    ...settings,
+    id: subscriber.id,
+    shownLocalityIds: subscriber.shownLocalityIds || [],
+    completedCycles: Number(subscriber.completedCycles || 0),
+    totalShownCount: Number(subscriber.totalShownCount || 0)
   };
 }
 
-function normalizePhone(phoneNumber) {
-  const compact = String(phoneNumber || "").replace(/[\s\-().]/g, "");
-  let digits = compact.startsWith("+") ? compact.slice(1) : compact.replace(/[^\d]/g, "");
-
-  if (/^0\d{9}$/.test(digits)) {
-    digits = `972${digits.slice(1)}`;
-  }
-
-  if (/^9720\d{9}$/.test(digits)) {
-    digits = `972${digits.slice(4)}`;
-  }
-
-  return digits;
-}
-
-function isValidIsraeliPhone(phoneNumber) {
-  return /^9725\d{8}$/.test(String(phoneNumber || ""));
+function selectBatch(learner) {
+  const dateKey = localDateKey(new Date(), learner.timezone);
+  const identity = learner.id || learner.phoneNumber || learner.name || "anonymous";
+  const cycle = Number(learner.completedCycles || 0);
+  const random = createSeededRandom(`${identity}:${cycle}:${dateKey}`);
+  return pickDailyBatch(LOCALITIES, learner, { random });
 }
 
 function publicSubscriber(subscriber) {
@@ -312,7 +471,9 @@ function publicSubscriber(subscriber) {
     timezone: subscriber.timezone,
     consentAccepted: subscriber.consentAccepted,
     isActive: subscriber.isActive,
-    shownCount: subscriber.shownLocalityIds.length,
+    shownCount: Array.isArray(subscriber.shownLocalityIds)
+      ? subscriber.shownLocalityIds.length
+      : 0,
     completedCycles: Number(subscriber.completedCycles || 0),
     totalShownCount: Number(subscriber.totalShownCount || 0),
     lastSentDate: subscriber.lastSentDate,
@@ -320,69 +481,27 @@ function publicSubscriber(subscriber) {
   };
 }
 
-function pickNextBatch(user) {
-  const shown = new Set(user.shownLocalityIds || []);
-  const ordered = getOrderedLocalities(user.orderMode);
-  let remaining = ordered.filter((locality) => !shown.has(locality.id));
+function createProgressSummary(learner = {}) {
+  const validIds = new Set(LOCALITIES.map((locality) => locality.id));
+  const shownIds = [...new Set(Array.isArray(learner.shownLocalityIds)
+    ? learner.shownLocalityIds.filter((id) => validIds.has(id))
+    : [])];
+  const shownSet = new Set(shownIds);
+  const regionsUnlocked = new Set(
+    LOCALITIES
+      .filter((locality) => shownSet.has(locality.id))
+      .map((locality) => locality.region)
+      .filter(Boolean)
+  ).size;
 
-  if (!remaining.length) {
-    user.completedCycles = Number(user.completedCycles || 0) + 1;
-    user.shownLocalityIds = [];
-    remaining = ordered;
-  }
-
-  return remaining.slice(0, Math.min(5, Math.max(1, Number(user.dailyCount || 3))));
-}
-
-function getOrderedLocalities(orderMode) {
-  if (orderMode === "official") {
-    return [...LOCALITIES].sort((a, b) => Number(a.officialCode || 0) - Number(b.officialCode || 0));
-  }
-
-  if (orderMode === "random") {
-    return shuffle(LOCALITIES);
-  }
-
-  return [...LOCALITIES].sort((a, b) => {
-    const region = String(a.region || "").localeCompare(String(b.region || ""), "he");
-    return region || Number(a.officialCode || 0) - Number(b.officialCode || 0);
-  });
-}
-
-function shuffle(items) {
-  const result = [...items];
-  for (let index = result.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
-  }
-  return result;
-}
-
-function createLocalityMessages(user, batch) {
-  return batch.map((locality, index) => createSingleLocalityMessage(user, locality, index, batch.length));
-}
-
-function createSingleLocalityMessage(user, locality, index, total) {
-  const facts = Array.isArray(locality.facts) && locality.facts.length ? locality.facts : [FALLBACK_FACT];
-  const factLimit = user.messageStyle === "detailed" ? 4 : 3;
-  const lines = [
-    `יישוב ${index + 1} מתוך ${total}:`,
-    locality.hebrewName,
-    `אזור: ${locality.region || "אזור לא זמין"}`,
-    `סוג: ${locality.localityType || "סוג לא זמין"}`,
-    "עובדות:",
-    ...facts.slice(0, factLimit).map((fact) => `• ${fact}`)
-  ];
-
-  if (user.messageStyle === "challenge") {
-    lines.push("", `ניחוש מהיר: באיזה מחוז נמצא ${locality.hebrewName}?`);
-  }
-
-  return lines.join("\n");
-}
-
-function createCombinedMessage(user, batch) {
-  return [`בוקר טוב ${user.name || "יונדב"} 🌍`, `${batch.length} היישובים שלך להיום:`, "", ...createLocalityMessages(user, batch)].join("\n\n");
+  return {
+    shownCount: shownIds.length,
+    remainingCount: Math.max(0, LOCALITIES.length - shownIds.length),
+    totalCount: LOCALITIES.length,
+    regionsUnlocked,
+    completedCycles: Number(learner.completedCycles || 0),
+    totalShownCount: Number(learner.totalShownCount || 0)
+  };
 }
 
 async function runScheduler() {
@@ -394,13 +513,17 @@ async function runScheduler() {
       continue;
     }
 
-    const batch = pickNextBatch(subscriber);
-    const messages = createLocalityMessages(subscriber, batch);
+    const selection = selectBatch(subscriber);
+    const messages = createLocalityMessages(subscriber, selection.batch);
     const result = await sendWhatsAppMessages(subscriber.phoneNumber, messages);
 
     if (result.ok) {
-      subscriber.shownLocalityIds = Array.from(new Set([...(subscriber.shownLocalityIds || []), ...batch.map((item) => item.id)]));
-      subscriber.totalShownCount = Number(subscriber.totalShownCount || 0) + batch.length;
+      subscriber.shownLocalityIds = [...new Set([
+        ...selection.shownLocalityIds,
+        ...selection.batch.map((item) => item.id)
+      ])];
+      subscriber.completedCycles = selection.completedCycles;
+      subscriber.totalShownCount = Number(subscriber.totalShownCount || 0) + selection.batch.length;
       subscriber.lastSentDate = localDateKey(new Date(), subscriber.timezone);
       changed = true;
     }
@@ -430,7 +553,6 @@ function isDueNow(subscriber) {
   if (subscriber.lastSentDate === dateKey) {
     return false;
   }
-
   return localTime(now, subscriber.timezone) === subscriber.sendTime;
 }
 
@@ -452,11 +574,15 @@ function localTime(date, timezone) {
   }).format(date);
 }
 
+function hasEnvValue(key) {
+  return Boolean(String(process.env[key] || "").trim());
+}
+
 function isMockMode() {
-  return !process.env.WHATSAPP_TOKEN
-    || !process.env.WHATSAPP_PHONE_NUMBER_ID
-    || !process.env.WHATSAPP_TEMPLATE_NAME
-    || !process.env.WHATSAPP_TEMPLATE_LANGUAGE;
+  return !hasEnvValue("WHATSAPP_TOKEN")
+    || !hasEnvValue("WHATSAPP_PHONE_NUMBER_ID")
+    || !hasEnvValue("WHATSAPP_TEMPLATE_NAME")
+    || !hasEnvValue("WHATSAPP_TEMPLATE_LANGUAGE");
 }
 
 async function sendWhatsAppMessages(phoneNumber, messages) {
@@ -475,7 +601,12 @@ async function sendWhatsAppMessages(phoneNumber, messages) {
     const result = await sendWhatsAppTemplate(phoneNumber, message);
     results.push(result);
     if (!result.ok) {
-      return { ok: false, mockMode: false, sentCount: results.filter((item) => item.ok).length, results };
+      return {
+        ok: false,
+        mockMode: false,
+        sentCount: results.filter((item) => item.ok).length,
+        results
+      };
     }
     await delay(randomBetween(LIVE_SEND_DELAY_MIN_MS, LIVE_SEND_DELAY_MAX_MS));
   }
@@ -526,3 +657,13 @@ function delay(ms) {
 function randomBetween(min, max) {
   return Math.floor(min + Math.random() * (max - min + 1));
 }
+
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = {
+  app,
+  startServer,
+  runScheduler
+};

@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "import:localities": "node scripts/import-localities.js"
+    "import:localities": "node scripts/import-localities.js",
+    "build:map-prototype": "node scripts/build-map-prototype-data.js",
+    "validate:data": "node scripts/validate-data.js",
+    "test": "node --test"
   },
   "dependencies": {
     "express": "^4.18.3"

@@ -38,14 +38,36 @@ localities-learning-app/
   styles.css
   app.js
   data/
+    locality-coordinates.prototype.json
     localities.mock.js
     localities.official.json
     region-mapping.json
     subscribers.example.json
+  docs/
+    CURRENT_ISSUES.md
   lib/
+    constants.js
+    coordinates.js
+    env.js
+    localities.js
+    messages.js
     mini-express.js
+    phone.js
+    settings.js
   scripts/
+    build-map-prototype-data.js
     import-localities.js
+    validate-data.js
+  test/
+    api.test.js
+    coordinates.test.js
+    data-validation.test.js
+    env.test.js
+    frontend-bootstrap.test.js
+    localities.test.js
+    messages.test.js
+    phone.test.js
+    settings.test.js
 ```
 
 לא להעלות ל-GitHub:
@@ -94,6 +116,54 @@ node scripts/import-localities.js
 data/localities.official.json
 ```
 
+## בדיקות ואימות נתונים
+
+להרצת בדיקות היחידה ובדיקת זרימות ה-API:
+
+```powershell
+npm test
+```
+
+להפקת דו"ח תקינות של מאגר היישובים הרשמי:
+
+```powershell
+npm run validate:data
+```
+
+הדו"ח כולל ספירת רשומות, כפילויות, שדות חסרים, ספירה לפי אזור והתאמה בין `count` לאורך מערך היישובים.
+
+ה-backend הוא מקור האמת לבחירת המקבץ, ל-`shownLocalityIds` ולנוסח הודעות WhatsApp. ה-frontend שומר מקומית רק הגדרות ממשק ורצף ביקורים.
+
+## אב-טיפוס מפת התמצאות
+
+כרטיס יישוב יכול להציג מפת Leaflet קטנה עם שכבת OpenStreetMap, סמן במרכז היישוב ומעגל ברדיוס 5 ק"מ. המפה נועדה להקשר מרחבי בלבד, אינה כלי ניווט ואינה משנה את בחירת המקבץ או את ההתקדמות.
+
+המשאב הרשמי שנבדק מכיל את השדות `city_code`, `city_name_he`, `city_name_en`, `region_name`, `PIBA_bureau_name` ופרטי מועצה אזורית. אין בו קווי אורך ורוחב, קואורדינטות רשת או centroid. לכן אב-הטיפוס משתמש במטמון קטן ונפרד:
+
+```text
+data/locality-coordinates.prototype.json
+```
+
+המטמון כולל 16 יישובים מאומתים לפי `officialCode`: מטולה, קצרין, ראש פינה, טבריה, עפולה, חיפה, נתניה, תל אביב - יפו, בית שמש, אשדוד, באר שבע, מצפה רמון, חצבה, אילת, אבו גוש ומבשרת ציון. ירושלים אינה כלולה כרגע משום ששירות המקור החזיר שני גבולות מנהליים תואמים ללא נקודת יישוב יחידה, ולכן לא נבחרה קואורדינטה באופן שרירותי.
+
+לבנייה מחדש של מטמון האב-טיפוס:
+
+```powershell
+npm run build:map-prototype
+```
+
+הסקריפט משתמש ב-Nominatim של OpenStreetMap באופן חד-פעמי, טורי ומוגבל לבקשה אחת בכל 1.2 שניות. הוא שומר תוצאות מאומתות במטמון, מדווח על כישלונות או התאמות עמומות ואינו מבצע geocoding בזמן הרצת האתר. יש לעיין ב-[מדיניות השימוש של Nominatim](https://operations.osmfoundation.org/policies/nominatim/) לפני הרחבת המדגם.
+
+בזמן צפייה אנושית בדף, Leaflet טוען רק את אריחי המפה הנחוצים לתצוגה הנוכחית מ-OpenStreetMap ומציג ייחוס גלוי. אין הורדה מוקדמת או שמירת מפות לשימוש לא מקוון. פרטי המדיניות נמצאים ב-[OSM Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/).
+
+אפשר לכבות את האב-טיפוס בלי לפגוע בכרטיסים באמצעות:
+
+```js
+const ENABLE_CONTEXT_MAP_PROTOTYPE = false;
+```
+
+בראש `app.js`. כאשר אין ליישוב קואורדינטה, הכרטיס מציג הודעת חסר קצרה ואינו יוצר מפה ריקה.
+
 ## מודל יישוב
 
 כל יישוב מנורמל למבנה:
@@ -131,6 +201,7 @@ data/localities.official.json
 - `POST /api/subscribe` - הרשמה או עדכון מנוי.
 - `POST /api/unsubscribe` - כיבוי מנוי.
 - `POST /api/send-test` - שליחת בדיקה או הדפסה ב-mock mode.
+- `POST /api/progress/mark-shown` - סימון יישוב כמוצג במקור ההתקדמות של השרת.
 - `POST /api/reset-progress` - איפוס התקדמות למנוי.
 
 `GET /api/status` מחזיר לדוגמה:
@@ -142,7 +213,8 @@ data/localities.official.json
   "hasToken": false,
   "hasPhoneNumberId": false,
   "localitiesCount": 1306,
-  "dataSource": "official"
+  "dataSource": "official",
+  "mapPrototypeCount": 16
 }
 ```
 
@@ -158,7 +230,9 @@ WHATSAPP_TEMPLATE_NAME=
 WHATSAPP_TEMPLATE_LANGUAGE=he
 ```
 
-לא להכניס טוקנים או סודות לקוד. לשימוש מקומי יוצרים קובץ `.env` בלבד, והוא לא אמור להיכנס ל-GitHub.
+לשימוש מקומי מעתיקים את `.env.example` לקובץ `.env` וממלאים את הערכים. `server.js` טוען את הקובץ לפני קריאת `PORT` והגדרות WhatsApp. משתנים שכבר הוגדרו בסביבת התהליך מקבלים עדיפות על הקובץ.
+
+לא להכניס טוקנים או סודות לקוד. `.env` לא אמור להיכנס ל-GitHub.
 
 אם חסרים פרטי WhatsApp Cloud API, השרת נשאר ב-mock mode:
 
